@@ -1,0 +1,20 @@
+# Ignore all .log files
+*.log
+
+# Ignore node_modules directory
+node_modules/
+
+# Ignore all .env files
+.env
+
+# Ignore all excel files
+*.xlsx
+
+# Ignore all text files
+*.txt
+
+# Ignore all files in a specific directory
+path/to/directory/*
+
+# Ignore all files ending with .bak
+*.bak
