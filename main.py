@@ -1,6 +1,4 @@
 import math
-import numpy as np
-import sounddevice as sd
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
@@ -9,12 +7,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support import expected_conditions as EC
 import time
-
-# ------------------------- LOGIN DETAILS ------------------------
-
-username = '978934162'
-password = 'Instacred'
-
+from selenium.common.exceptions import StaleElementReferenceException
 # ----------------------------------------------------------------
 
 #-------------------------- PRE-REQUISITES -----------------------
@@ -39,26 +32,21 @@ driver.get(url)
 
 # --------------------------- FUNCTIONS ---------------------------------
 
-def generate_test_sound():
-    duration = 2.0  # seconds
-    frequency = 440.0  # Hz
-    sample_rate = 44100
-    t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
-    audio_signal = 0.5 * np.sin(2 * np.pi * frequency * t)
-    sd.play(audio_signal, sample_rate)
-    sd.wait()
-
 def login():
-
     print("🔃 logging in....")
+
+    username = '770125562'
+    password = 'thebag'
+
     try:
-        time.sleep(5)
-
-        username_field = driver.find_element(By.ID, 'input-145')  # Use the correct attribute (e.g., NAME, ID, CLASS_NAME)
-        password_field = driver.find_element(By.ID, 'input-146')  # Use the correct attribute (e.g., NAME, ID, CLASS_NAME)
-
-        login_button = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.XPATH, '//*[contains(@class, "mx-1") and contains(@class, "rounded-lg") and contains(@class, "v-btn") and contains(@class, "v-btn--text") and contains(@class, "theme--light") and contains(@class, "v-size--default") and contains(@class, "white--text") and contains(@class, "primary") and contains(@class, "mt-2") and contains(@class, "mb-2")]'))
+        username_field = WebDriverWait(driver, 20).until(
+            EC.presence_of_element_located((By.ID, 'login-mobile'))
+        )
+        password_field = WebDriverWait(driver, 20).until(
+            EC.presence_of_element_located((By.ID, 'login-password'))
+        )
+        login_button = WebDriverWait(driver, 20).until(
+            EC.presence_of_element_located((By.XPATH, '//button[contains(@class,"whitespace-nowrap") and contains(@class,"bg-identity") and contains(@class,"w-full")]'))
         )
 
         username_field.send_keys(username)
@@ -67,36 +55,9 @@ def login():
         print("✅ Logged in successfully!")
 
     except Exception as e:
-        try:
-            username_field = driver.find_element(By.ID, 'input-157')
-            password_field = driver.find_element(By.ID, 'input-158')
-
-            login_button = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.XPATH, '//*[contains(@class, "mx-1") and contains(@class, "rounded-lg") and contains(@class, "v-btn") and contains(@class, "v-btn--text") and contains(@class, "theme--light") and contains(@class, "v-size--default") and contains(@class, "white--text") and contains(@class, "primary") and contains(@class, "mt-2") and contains(@class, "mb-2")]'))
-            )
-
-            username_field.send_keys(username)
-            password_field.send_keys(password)
-            login_button.click()
-            print("✅ Logged in successfully! --SECOND ATTEMPT--")
-        except:
-            try:
-                username_field = driver.find_element(By.ID, 'input-166')
-                password_field = driver.find_element(By.ID, 'input-167')
-
-                login_button = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.XPATH, '//*[contains(@class, "mx-1") and contains(@class, "rounded-lg") and contains(@class, "v-btn") and contains(@class, "v-btn--text") and contains(@class, "theme--light") and contains(@class, "v-size--default") and contains(@class, "white--text") and contains(@class, "primary") and contains(@class, "mt-2") and contains(@class, "mb-2")]'))
-                )
-
-                username_field.send_keys(username)
-                password_field.send_keys(password)
-                login_button.click()
-                print("✅ Logged in successfully! --THIRD ATTEMPT--")
-            except:
-                print("❌ Username and password fields not found.")
-                print("please try again later...")
-                time.sleep(10)
-                driver.quit()
+        print(f"unable to login{e}")
+        time.sleep(30)
+        driver.quit()
 
 def click_bet_button():
     try:
@@ -111,10 +72,7 @@ def click_bet_button():
 
 def click_auto_button():
     try:
-        #auto_button = WebDriverWait(driver, 30).until(
-        #    EC.presence_of_element_located((By.XPATH, '//button[contains(@class, "tab") and contains(@class, "ng-star-inserted")]'))
-        #)
-        auto_button = WebDriverWait(driver, 20).until(
+        auto_button = WebDriverWait(driver, 30).until(
         EC.presence_of_element_located((By.XPATH, '//button[@class="tab ng-star-inserted" and text()=" Auto "]'))
         )
         auto_button.click()
@@ -125,7 +83,7 @@ def click_auto_button():
 def trigger_auto():
     try:
         # Wait until the toggle switch is present
-        toggle_div = WebDriverWait(driver, 10).until(
+        toggle_div = WebDriverWait(driver, 30).until(
             EC.presence_of_element_located((By.XPATH, '//app-ui-switcher[@class="ng-untouched ng-pristine ng-valid"]/div[@class="input-switch off"]/span[@class="oval"]'))
         )
         # Click the toggle switch
@@ -224,11 +182,6 @@ def click_minus_button():
     except Exception as e:
         print("❌ could not find add button")
 
-def estimate_multiplier(start_time):
-    elapsed_time = time.time() - start_time
-    #adjust the growth rate here
-    growth_rate = 0.09;
-    return 1 + (math.exp(elapsed_time*growth_rate)-1)  # Slightly exponential growth
 
 def check_cashout_success():
     try:
@@ -238,6 +191,13 @@ def check_cashout_success():
         return True
     except Exception as e:
         return False
+
+
+def get_multiplier_data():
+    # Get all multiplier elements
+    elements = driver.find_elements(By.XPATH, '//app-bubble-multiplier[contains(@class, "payout") and contains(@class, "ng-star-inserted")]')
+    multipliers = [element.text for element in elements]
+    return multipliers
 
 # ------------------------- START --------------------------
 
@@ -261,28 +221,6 @@ try:
 except Exception as e:
     print("❌No iframe found.")
 
-# Find the add button and click it
-try:
-    #print("🔃 trying to find add button")
-    add_button = WebDriverWait(driver, 5).until(
-        EC.presence_of_element_located((By.XPATH, '//button[contains(@class, "plus") and contains(@class, "ng-star-inserted")]'))
-    )
-    print("✅ add button found")
-    successful_tests+=1
-except Exception as e:
-    print("❌ could not find the add button")
-
-# Find the add button and click it
-try:
-    #print("🔃 trying to find minus button")
-    minus_button = WebDriverWait(driver, 5).until(
-        EC.presence_of_element_located((By.XPATH, '//button[contains(@class, "minus") and contains(@class, "ng-star-inserted")]'))
-    )
-    print("✅ minus button found")
-    successful_tests+=1
-except Exception as e:
-    print("❌ could not find the minus button")
-
 
 try:
     #print("🔃 trying to find bet button")
@@ -296,23 +234,23 @@ except:
 
 try:
     #print("🔃 trying to find auto button")
-    auto_button = WebDriverWait(driver, 10).until(
+    auto_button = WebDriverWait(driver, 30).until(
         EC.presence_of_element_located((By.XPATH, '//button[@class="tab ng-star-inserted" and @style="width: 100px;" and text()=" Auto "]'))
         )
     print("✅ auto button found")
     successful_tests+=1
 except:
-    print("❌ could not find the bet button")
+    print("❌ could not find the auto button")
     
 
-if successful_tests == 5:
+if successful_tests == 3:
     print("✅ ALL TESTS SUCCESSFUL ✅")
 else:
     print("❌ TESTS UNSUCESSFUL!")
     print("please try again later....")
     time.sleep(5)
     driver.quit()
-
+    exit()
 
 # ------------------------- MAIN --------------------------
 
@@ -320,11 +258,9 @@ def main_game_loop():
     global cashout_value
     global bet_value
 
-    cashout_value = 2
+    cashout_value = 1.5
     bet_value = 0.1
 
-    print(bet_value)
-    print(cashout_value)
 
     click_auto_button()
     time.sleep(2)
@@ -383,10 +319,6 @@ def place_single_bet(attempt):
     )
 
     print("✈️ --PLANE HAS TAKEN OFF--")
-    start_time = time.time()
-
-    # Monitor the multipliers to detect when a new one is added
-    existing_multipliers = driver.find_elements(By.XPATH, '//app-bubble-multiplier[contains(@class, "payout") and contains(@class, "ng-star-inserted")]')
 
     while True:
         if check_cashout_success():
@@ -394,15 +326,31 @@ def place_single_bet(attempt):
             return True
 
         # Check for a new multiplier to determine if the plane has flown away
-        new_multipliers = driver.find_elements(By.XPATH, '//app-bubble-multiplier[contains(@class, "payout") and contains(@class, "ng-star-inserted")]')
-        if len(new_multipliers) > len(existing_multipliers):
-            # Extract the value of the last added multiplier
-            last_multiplier_element = new_multipliers[0]
-            last_multiplier_value = last_multiplier_element.text
-            print(f"💔 --PLANE HAS FLOWN AWAY-- at multiplier element text: {last_multiplier_value}")
-            return False
+        initial_multipliers = get_multiplier_data()
+        seen_multipliers = list(initial_multipliers[:1])
+        try:
+            new_multipliers = get_multiplier_data()
+            second_multiplier = new_multipliers[1]
+            new_multipliers = new_multipliers[:1]
+            new_values = [value for value in new_multipliers if value not in seen_multipliers]
 
-        time.sleep(0.1)
+            print(f"new: {new_multipliers}")
+            print(f"new: {seen_multipliers}")
+            print(f"new: {second_multiplier}")
+
+            if second_multiplier == seen_multipliers[0]:
+                print(f"💔 Plane flown away at {seen_multipliers[0]}")
+                return False
+
+            if new_values:
+                print(f"💔 Plane flew away at {new_values[0]}")
+                return False
+
+        except StaleElementReferenceException:
+            print("StaleElementReferenceException encountered. Re-locating elements.")
+        except Exception as e:
+            print(f"❌ An error occurred: {e}")
+            break
 
 try:
     main_game_loop()

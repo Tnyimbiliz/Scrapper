@@ -1,5 +1,8 @@
 import time
 import pandas as pd
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
@@ -7,7 +10,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import StaleElementReferenceException
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # -------------------------- PRE-REQUISITES -----------------------
 # Set up Chrome options
@@ -70,13 +73,11 @@ def get_total_bets():
         print(f"❌ Failed to retrieve total bets value: {e}")
         return None
 
-
 def get_multiplier_data():
     # Get all multiplier elements
     elements = driver.find_elements(By.XPATH, '//app-bubble-multiplier[contains(@class, "payout") and contains(@class, "ng-star-inserted")]')
     multipliers = [element.text for element in elements]
     return multipliers
-
 
 def save_to_text(data, filename='multipliers.txt'):
     with open(filename, 'a') as file:
@@ -90,6 +91,32 @@ def save_to_excel(data, filename='multipliers.xlsx'):
     except FileNotFoundError:
         pass
     df.to_excel(filename, index=False)
+
+def send_email():
+    sender_email = "easyclaps011@gmail.com"
+    receiver_email = "jortiatisthomas@gmail.com"
+    password = "Mwansa2020"
+
+    subject = "No New Multipliers Detected"
+    body = "It has been 3 minutes since the last new multiplier was detected."
+
+    msg = MIMEMultipart()
+    msg['From'] = sender_email
+    msg['To'] = receiver_email
+    msg['Subject'] = subject
+
+    msg.attach(MIMEText(body, 'plain'))
+
+    try:
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(sender_email, password)
+        text = msg.as_string()
+        server.sendmail(sender_email, receiver_email, text)
+        server.quit()
+        print("Email sent successfully")
+    except Exception as e:
+        print(f"Failed to send email: {e}")
 
 # ------------------------- MAIN --------------------------
 
@@ -109,42 +136,51 @@ try:
 except Exception as e:
     print("❌No iframe found.")
 
+multipliers = WebDriverWait(driver, 30).until(
+    EC.presence_of_element_located((By.XPATH, '//app-bubble-multiplier[contains(@class, "payout") and contains(@class, "ng-star-inserted")]'))
+)
+
 # Initialize set to store seen multipliers
 initial_multipliers = get_multiplier_data()
 seen_multipliers = list(initial_multipliers[:1])
 
-count = 0
-
-time.sleep(5)
+count = 1
+last_saved_time = datetime.now()
 
 while True:
+    total_bets = get_total_bets()
+    send_email()
     try:
-        total_bets = get_total_bets()
         new_multipliers = get_multiplier_data()
+        second_multiplier = new_multipliers[1]
         new_multipliers = new_multipliers[:1]
         new_values = [value for value in new_multipliers if value not in seen_multipliers]
 
-        #print(new_multipliers)
-        #print(seen_multipliers)
+        if second_multiplier == seen_multipliers[0]:
+            print("repeated value!!!!!!!!!!!!!")
+            new_values = [second_multiplier]
 
         if new_values:
-            if count == 0:
-                print("Initial multipliers found and ignored:", new_values)
-                seen_multipliers = (seen_multipliers + new_values)[-1:]
-            else:
-                print(f"✅ {count} = {new_values}")
-                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                data = [(value.rstrip('x'), timestamp, total_bets) for value in new_values]
-                save_to_excel(data)  # Save the new multipliers
-                save_to_text(data)
-                seen_multipliers = (seen_multipliers + new_values)[-1:]
+            print(f"✅ {count} = {new_values[0]}")
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            data = [(value.rstrip('x'), timestamp, total_bets) for value in new_values]
+            save_to_excel(data)  # Save the new multipliers
+            save_to_text(data)
+            seen_multipliers = (seen_multipliers + new_values)[-1:]
             count += 1
+            last_saved_time = datetime.now()  # Update the last saved time
 
+        # Check if 3 minutes have passed since the last save
+        if datetime.now() - last_saved_time > timedelta(minutes=3):
+            send_email()
+            last_saved_time = datetime.now()  # Reset the timer
 
     except StaleElementReferenceException:
         print("StaleElementReferenceException encountered. Re-locating elements.")
     except Exception as e:
         print(f"❌ An error occurred: {e}")
         break
+
+    time.sleep(1)  # Adjust the delay as necessary
 
 driver.quit()
