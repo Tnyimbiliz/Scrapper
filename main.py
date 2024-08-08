@@ -8,6 +8,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support import expected_conditions as EC
 import time
 from selenium.common.exceptions import StaleElementReferenceException
+
 # ----------------------------------------------------------------
 
 #-------------------------- PRE-REQUISITES -----------------------
@@ -158,30 +159,6 @@ def insert_amount(amount):
     except Exception as e:
         print(f"❌ An error occurred: {e}")
 
-def click_add_button():
-
-    try:
-        add_button = WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.XPATH, '//button[contains(@class, "plus") and contains(@class, "ng-star-inserted")]'))
-        )
-        add_button.click()
-        print("➕ add button pressed!")
-
-    except Exception as e:
-        print("❌ could not find add button")
-
-def click_minus_button():
-
-    try:
-        add_button = WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.XPATH, '//button[contains(@class, "minus") and contains(@class, "ng-star-inserted")]'))
-        )
-        add_button.click()
-        print("➖ minus button pressed!")
-
-    except Exception as e:
-        print("❌ could not find add button")
-
 
 def check_cashout_success():
     try:
@@ -199,6 +176,13 @@ def get_multiplier_data():
     multipliers = [element.text for element in elements]
     return multipliers
 
+
+def convert_to_float(value):
+    try:
+        return float(value.replace('x',''))
+    except ValueError:
+        print("Invalid input, unable to convert!")
+        return None
 # ------------------------- START --------------------------
 
 #login function
@@ -220,7 +204,6 @@ try:
     successful_tests+=1
 except Exception as e:
     print("❌No iframe found.")
-
 
 try:
     #print("🔃 trying to find bet button")
@@ -258,59 +241,55 @@ def main_game_loop():
     global cashout_value
     global bet_value
 
-    cashout_value = 1.5
+    cashout_value = 3.2
     bet_value = 0.1
-
 
     click_auto_button()
     time.sleep(2)
     trigger_auto()
 
-    successful_cash_outs = 0
+    global last_three_bets
+    initial_multipliers = get_multiplier_data()
+    last_three_bets = [convert_to_float(multiplier) for multiplier in initial_multipliers[:3]]
+
+
+    print(f"initial multipliers: {initial_multipliers}")
+
     while True:
-        if not place_bets():
-            print("❌ All bets failed, stopping the program")
-            driver.quit()
-            break
-        if successful_cash_outs > 0:
-            successful_cash_outs = 0  # Reset after successful cash out
+        if len(last_three_bets) == 3 and all(float(bet) < 5.0 for bet in last_three_bets):
+            print("🚨 Last 3 bets were below 5.0, betting 1 with cashout value of 1.2")
+            bet_value = 1
+            cashout_value = 1.2
+
+            if place_bets():
+                print("✅ Bet successfully cashed out after 3 low bets")
+                time.sleep(10)
+                driver.quit()
+                break
+            else:
+                print("❌ didnt cash out!, stopping the program")
+                driver.quit()
+                break
+
 
 def place_bets():
-    for attempt in range(3):
-
-        if not place_single_bet(attempt):
-            continue  # Move to the next attempt
-        else:
-            return True  # Successful cash out, restart the loop
-    return False  # All attempts failed
-
-def place_single_bet(attempt):
-    #click_add_button()
     global bet_value
-
-    takeoff_indicator = WebDriverWait(driver, 120).until(
-        EC.presence_of_element_located((By.XPATH, '//app-bet-control[contains(@class, "bet-control") and contains(@class, "double-bet") and not(contains(@class, "locked"))]'))
-    )
-
     global cashout_value
-    
-    if attempt == 2:
-        bet_value = bet_value+2;
-    
-    if attempt == 3:
-        bet_value = bet_value*2;
+    global last_three_bets
+
+    print(f"last 3 bets: {last_three_bets}")
 
     insert_auto_value(cashout_value)
     insert_amount(bet_value)
-    
+
     # random click
     body_element = driver.find_element(By.TAG_NAME, 'body')
     body_element.click()
 
     time.sleep(2)
     click_bet_button()
-    print(f"🎰 Bet placed successfully! -- Attempt {attempt+1}")
-    locked_indicator = WebDriverWait(driver, 60).until(
+    print(f"🎰 Bet placed successfully!")
+    locked_indicator = WebDriverWait(driver, 180).until(
         EC.presence_of_element_located((By.XPATH, '//app-bet-control[contains(@class, "bet-control") and contains(@class, "double-bet") and contains(@class, "locked")]'))
     )
     print("🔒 LOCKED!!!!")
@@ -320,37 +299,43 @@ def place_single_bet(attempt):
 
     print("✈️ --PLANE HAS TAKEN OFF--")
 
+    initial_multipliers = get_multiplier_data()
+    seen_multipliers = list(initial_multipliers[:1])
+
     while True:
         if check_cashout_success():
             print(f"💵 Cashed out at {cashout_value}")
+            last_three_bets.append(cashout_value)
+            if len(last_three_bets) > 3:
+                last_three_bets.pop(0)
             return True
+        else:
+            # Check for a new multiplier to determine if the plane has flown away
+            try:
+                new_multipliers = get_multiplier_data()
+                second_multiplier = new_multipliers[1]
+                new_multipliers = new_multipliers[:1]
+                new_values = [value for value in new_multipliers if value not in seen_multipliers]
 
-        # Check for a new multiplier to determine if the plane has flown away
-        initial_multipliers = get_multiplier_data()
-        seen_multipliers = list(initial_multipliers[:1])
-        try:
-            new_multipliers = get_multiplier_data()
-            second_multiplier = new_multipliers[1]
-            new_multipliers = new_multipliers[:1]
-            new_values = [value for value in new_multipliers if value not in seen_multipliers]
+                if new_values:
+                    print(f"💔 Plane flew away at {new_values[0]}")
+                    last_three_bets.append(float(new_values[0]))
+                    if len(last_three_bets) > 3:
+                        last_three_bets.pop(0)
+                    return False
 
-            print(f"new: {new_multipliers}")
-            print(f"new: {seen_multipliers}")
-            print(f"new: {second_multiplier}")
+                if second_multiplier == new_multipliers[0]:
+                    print(f"💔 Plane flown away at {new_multipliers[0]}")
+                    last_three_bets.append(float(new_multipliers[0]))
+                    if len(last_three_bets) > 3:
+                        last_three_bets.pop(0)
+                    return False
 
-            if second_multiplier == seen_multipliers[0]:
-                print(f"💔 Plane flown away at {seen_multipliers[0]}")
-                return False
-
-            if new_values:
-                print(f"💔 Plane flew away at {new_values[0]}")
-                return False
-
-        except StaleElementReferenceException:
-            print("StaleElementReferenceException encountered. Re-locating elements.")
-        except Exception as e:
-            print(f"❌ An error occurred: {e}")
-            break
+            except StaleElementReferenceException:
+                print("StaleElementReferenceException encountered. Re-locating elements.")
+            except Exception as e:
+                print(f"❌ An error occurred: {e}")
+                break
 
 try:
     main_game_loop()

@@ -1,6 +1,5 @@
 import time
 import pandas as pd
-import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from selenium import webdriver
@@ -19,7 +18,7 @@ chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument("--disable-dev-shm-usage")
 
 # Path to your ChromeDriver
-chromedriver_path = 'C:/Users/LENOVO/Pictures/chromedriver-win64/chromedriver.exe'  # Replace with your actual path
+chromedriver_path = 'chromedriver-win64/chromedriver.exe'  # Replace with your actual path
 print(f"Using ChromeDriver path: {chromedriver_path}")
 
 # Set up the driver
@@ -92,31 +91,6 @@ def save_to_excel(data, filename='multipliers.xlsx'):
         pass
     df.to_excel(filename, index=False)
 
-def send_email():
-    sender_email = "easyclaps011@gmail.com"
-    receiver_email = "jortiatisthomas@gmail.com"
-    password = "Mwansa2020"
-
-    subject = "No New Multipliers Detected"
-    body = "It has been 3 minutes since the last new multiplier was detected."
-
-    msg = MIMEMultipart()
-    msg['From'] = sender_email
-    msg['To'] = receiver_email
-    msg['Subject'] = subject
-
-    msg.attach(MIMEText(body, 'plain'))
-
-    try:
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()
-        server.login(sender_email, password)
-        text = msg.as_string()
-        server.sendmail(sender_email, receiver_email, text)
-        server.quit()
-        print("Email sent successfully")
-    except Exception as e:
-        print(f"Failed to send email: {e}")
 
 # ------------------------- MAIN --------------------------
 
@@ -140,39 +114,58 @@ multipliers = WebDriverWait(driver, 30).until(
     EC.presence_of_element_located((By.XPATH, '//app-bubble-multiplier[contains(@class, "payout") and contains(@class, "ng-star-inserted")]'))
 )
 
+print("starting...")
+
 # Initialize set to store seen multipliers
 initial_multipliers = get_multiplier_data()
 seen_multipliers = list(initial_multipliers[:1])
 
 count = 1
+trigger = 0
 last_saved_time = datetime.now()
 
 while True:
     total_bets = get_total_bets()
-    send_email()
     try:
         new_multipliers = get_multiplier_data()
         second_multiplier = new_multipliers[1]
         new_multipliers = new_multipliers[:1]
         new_values = [value for value in new_multipliers if value not in seen_multipliers]
 
-        if second_multiplier == seen_multipliers[0]:
-            print("repeated value!!!!!!!!!!!!!")
-            new_values = [second_multiplier]
+        if trigger == 0:
+            if second_multiplier == new_multipliers[0]:
+                print("repeated value!!!!!!!!!!!!!")
+                print(f"✅ {count} = {new_multipliers[0]}")
+                new_values = (new_values + new_multipliers)[-1]
+                trigger = 1 #trigger it not to look for a second value anymore
 
-        if new_values:
-            print(f"✅ {count} = {new_values[0]}")
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            data = [(value.rstrip('x'), timestamp, total_bets) for value in new_values]
-            save_to_excel(data)  # Save the new multipliers
-            save_to_text(data)
-            seen_multipliers = (seen_multipliers + new_values)[-1:]
-            count += 1
-            last_saved_time = datetime.now()  # Update the last saved time
+            if new_values:
+                print(f"✅ {count} = {new_values[0]}")
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                data = [(value.rstrip('x'), timestamp, total_bets) for value in new_values]
+                save_to_excel(data)  # Save the new multipliers
+                save_to_text(data)
+                seen_multipliers = (seen_multipliers + new_values)[-1:]
+                count += 1
+                last_saved_time = datetime.now()  # Update the last saved time
+        else:
+            if new_values:
+                print(f"✅ {count} = {new_values[0]}")
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                data = [(value.rstrip('x'), timestamp, total_bets) for value in new_values]
+                save_to_excel(data)  # Save the new multipliers
+                save_to_text(data)
+                seen_multipliers = (seen_multipliers + new_values)[-1:]
+                count += 1
+                last_saved_time = datetime.now()  # Update the last saved time
+                trigger = 0
 
+        time.sleep(2)
+
+            
         # Check if 3 minutes have passed since the last save
         if datetime.now() - last_saved_time > timedelta(minutes=3):
-            send_email()
+            print("timeout!")
             last_saved_time = datetime.now()  # Reset the timer
 
     except StaleElementReferenceException:
@@ -180,7 +173,5 @@ while True:
     except Exception as e:
         print(f"❌ An error occurred: {e}")
         break
-
-    time.sleep(1)  # Adjust the delay as necessary
 
 driver.quit()
