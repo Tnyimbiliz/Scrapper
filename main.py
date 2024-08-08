@@ -196,7 +196,7 @@ time.sleep(10)
 successful_tests = 0
 # Check for iframes
 try:
-    iframe = WebDriverWait(driver, 5).until(
+    iframe = WebDriverWait(driver, 30).until(
         EC.presence_of_element_located((By.TAG_NAME, 'iframe'))
     )
     driver.switch_to.frame(iframe)
@@ -206,7 +206,6 @@ except Exception as e:
     print("❌No iframe found.")
 
 try:
-    #print("🔃 trying to find bet button")
     bet_button = WebDriverWait(driver, 30).until(
             EC.presence_of_element_located((By.XPATH, '//button[contains(@class, "btn-success") and contains(@class, "bet") and contains(@class, "ng-star-inserted")]'))
         )
@@ -216,7 +215,6 @@ except:
     print("❌ could not find the bet button")
 
 try:
-    #print("🔃 trying to find auto button")
     auto_button = WebDriverWait(driver, 30).until(
         EC.presence_of_element_located((By.XPATH, '//button[@class="tab ng-star-inserted" and @style="width: 100px;" and text()=" Auto "]'))
         )
@@ -241,8 +239,14 @@ def main_game_loop():
     global cashout_value
     global bet_value
 
-    cashout_value = 3.2
-    bet_value = 0.1
+    multipliers = WebDriverWait(driver, 60).until(
+    EC.presence_of_element_located((By.XPATH, '//app-bubble-multiplier[contains(@class, "payout") and contains(@class, "ng-star-inserted")]'))
+    )
+
+    print("1️⃣ starting...")
+
+    cashout_value = 1
+    bet_value = 0.5
 
     click_auto_button()
     time.sleep(2)
@@ -251,26 +255,26 @@ def main_game_loop():
     global last_three_bets
     initial_multipliers = get_multiplier_data()
     last_three_bets = [convert_to_float(multiplier) for multiplier in initial_multipliers[:3]]
-
-
-    print(f"initial multipliers: {initial_multipliers}")
+    print(f"initials: {last_three_bets}")
 
     while True:
-        if len(last_three_bets) == 3 and all(float(bet) < 5.0 for bet in last_three_bets):
+        
+        if len(last_three_bets) == 3 and all(bet < 5.0 for bet in last_three_bets):
             print("🚨 Last 3 bets were below 5.0, betting 1 with cashout value of 1.2")
+            print(f"initials: {last_three_bets}")
             bet_value = 1
             cashout_value = 1.2
 
             if place_bets():
                 print("✅ Bet successfully cashed out after 3 low bets")
                 time.sleep(10)
-                driver.quit()
-                break
             else:
                 print("❌ didnt cash out!, stopping the program")
                 driver.quit()
                 break
+        
 
+        time.sleep(5)
 
 def place_bets():
     global bet_value
@@ -319,14 +323,14 @@ def place_bets():
 
                 if new_values:
                     print(f"💔 Plane flew away at {new_values[0]}")
-                    last_three_bets.append(float(new_values[0]))
+                    last_three_bets.append(convert_to_float(new_values[0]))
                     if len(last_three_bets) > 3:
                         last_three_bets.pop(0)
                     return False
 
                 if second_multiplier == new_multipliers[0]:
                     print(f"💔 Plane flown away at {new_multipliers[0]}")
-                    last_three_bets.append(float(new_multipliers[0]))
+                    last_three_bets.append(convert_to_float(new_multipliers[0]))
                     if len(last_three_bets) > 3:
                         last_three_bets.pop(0)
                     return False

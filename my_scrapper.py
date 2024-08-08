@@ -1,3 +1,4 @@
+import smtplib
 import time
 import pandas as pd
 from email.mime.text import MIMEText
@@ -30,13 +31,23 @@ url = "https://www.betway.co.zm/lobby/Casino/featured/Aviator/"
 print(f"✈️ Navigating to {url}")
 driver.get(url)
 
+
+# Email settings
+SMTP_SERVER = "smtp.office365.com"
+SMTP_PORT = 587
+EMAIL_ADDRESS = "asventuresx@outlook.com"
+EMAIL_PASSWORD = "Instacred@2024"
+
+# Recipients
+RECIPIENTS = ["dwinansong52@gmail.com", "siamechaila@gmail.com", "jortiatisthomas@gmail.com"]
+
 # --------------------------- FUNCTIONS ---------------------------------
 
 def login():
     print("🔃 logging in....")
 
-    username = '978934162'
-    password = 'Instacred'
+    username = '770125562'
+    password = 'thebag'
 
     try:
         username_field = WebDriverWait(driver, 20).until(
@@ -58,6 +69,23 @@ def login():
         print(f"unable to login{e}")
         time.sleep(30)
         driver.quit()
+
+def send_email(subject, body):
+    msg = MIMEMultipart()
+    msg["From"] = EMAIL_ADDRESS
+    msg["To"] = ", ".join(RECIPIENTS)
+    msg["Subject"] = subject
+
+    msg.attach(MIMEText(body, "plain"))
+
+    try:
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+            server.sendmail(EMAIL_ADDRESS, RECIPIENTS, msg.as_string())
+        print("Email sent successfully.")
+    except Exception as e:
+        print(f"Failed to send email: {e}")
 
 def get_total_bets():
     try:
@@ -100,6 +128,10 @@ login()
 print("⏱️ Loading...")
 time.sleep(5)
 
+print("trying to send an email")
+send_email("test email","this is to test if the email functionality is working :D")
+print("email sent!")
+
 try:
     iframe = WebDriverWait(driver, 5).until(
         EC.presence_of_element_located((By.TAG_NAME, 'iframe'))
@@ -135,8 +167,7 @@ while True:
         if trigger == 0:
             if second_multiplier == new_multipliers[0]:
                 print("repeated value!!!!!!!!!!!!!")
-                print(f"✅ {count} = {new_multipliers[0]}")
-                new_values = (new_values + new_multipliers)[-1]
+                new_values = [new_multipliers[0]]
                 trigger = 1 #trigger it not to look for a second value anymore
 
             if new_values:
