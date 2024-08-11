@@ -52,14 +52,14 @@ def login():
     password = 'thebag'
 
     try:
-        username_field = WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.ID, 'login-mobile'))
+        parent_element = WebDriverWait(driver, 30).until(
+            EC.presence_of_element_located((By.CLASS_NAME, 'v-text-field__slot'))
         )
-        password_field = WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.ID, 'login-password'))
-        )
+        username_field = parent_element.find_element(By.XPATH, '//input[@placeholder="Mobile Number" and @type="number"]')
+        password_field = parent_element.find_element(By.XPATH, '//input[@placeholder="Password" and @type="password"]')
+        
         login_button = WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.XPATH, '//button[contains(@class,"whitespace-nowrap") and contains(@class,"bg-identity") and contains(@class,"w-full")]'))
+            EC.presence_of_element_located((By.XPATH, '//button[contains(@class,"mx-1") and contains(@class,"rounded-lg") and contains(@class,"v-size--default")]'))
         )
 
         username_field.send_keys(username)
@@ -300,6 +300,10 @@ else:
     driver.quit()
     exit()
 
+# ------------- ❌ Pressures -----------------------------
+#  1️⃣ after bet, the data isnt scrapped
+#  1️⃣ the bet value, is not reset after a win
+
 # ------------------------- MAIN --------------------------
 
 def main_game_loop():
@@ -313,14 +317,20 @@ def main_game_loop():
 
     print("starting...")
 
-    cashout_value = 1.5
+
+    # ------------------ USER DEFINED VARIABLES ----------------
+
+    cashout_value = 10
     bet_value = 0.1
+
     increment_factor = 2
 
     last_bet_count = 2
     maximum_multiplier_value = 5
 
     attempts = 3
+
+    # -----------------------------------------------------------
 
     click_auto_button()
     time.sleep(1)
@@ -329,26 +339,35 @@ def main_game_loop():
     global last_bets
     global count
     
-    count = 0
 
     seen_multipliers = [get_first_multiplier_data()]
+
+    count = 1
+    last_saved_time = datetime.now()
+    trigger = 0
 
     while True:
 
         initial_multipliers = get_multiplier_data(last_bet_count)
         last_bets = [convert_to_float(multiplier) for multiplier in initial_multipliers[:last_bet_count]]
-        #print(f"initials: {last_bets}")
-        #print(f"last_bet_count: {last_bet_count}")
-        #print(f"maximum_mult_value : {maximum_multiplier_value}")
-        #print(f"bet value: {bet_value}")
-        #print(f"cashout value: {cashout_value}")
-        #print(f"increment factor: {increment_factor}")
         
         if len(last_bets) == last_bet_count and all(bet < maximum_multiplier_value for bet in last_bets):
+            total_bets = get_total_bets()
+            new_values = [get_first_multiplier_data()]
+            print(f"✅ {count} = {new_values[0]}")
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            data = [(value.rstrip('x'), timestamp, total_bets) for value in new_values]
+            save_to_excel(data)  # Save the new multipliers
+            save_to_text(data)
+            seen_multipliers = (seen_multipliers + new_values)[-1:]
+            count += 1
+            last_saved_time = datetime.now()
+
             print(f"🚨 Last {last_bet_count} bets were below {maximum_multiplier_value}, betting {bet_value} with cashout value of {cashout_value} and increment factor of {increment_factor}")
 
             if activate_bot(attempts):
                 print("✅ Bet successfully cashed out after 3 low bets")
+
                 time.sleep(10)
             else:
                 print("❌ didnt cash out!, stopping the program")
@@ -358,6 +377,7 @@ def main_game_loop():
         
         else:
             try:
+                total_bets = get_total_bets()
                 new_multipliers = [get_first_multiplier_data()]
                 second_multiplier = get_second_multiplier_data()
                 new_values = [value for value in new_multipliers if value not in seen_multipliers]
@@ -405,9 +425,11 @@ def main_game_loop():
 def activate_bot(attempts):
     global bet_value
     global cashout_value
+    global count
+
 
     print("bot activated!!!")
-    send_email("Bot actived!","The bot has been triggered and has now begun betting." )
+    #send_email("Bot actived!","The bot has been triggered and has now begun betting." )
 
     #insert_auto_value(cashout_value)
     #insert_amount(bet_value)
@@ -437,11 +459,13 @@ def activate_bot(attempts):
 
         time.sleep(2)
         click_bet_button()
-        print(f"🎰 Bet placed successfully!")
+        print(f"🎰 Bet placed successfully! - attempt {attempt+1}")
+
         locked_indicator = WebDriverWait(driver, 180).until(
             EC.presence_of_element_located((By.XPATH, '//app-bet-control[contains(@class, "bet-control") and contains(@class, "double-bet") and contains(@class, "locked")]'))
         )
         print("🔒 LOCKED!!!!")
+
         takeoff_indicator = WebDriverWait(driver, 60).until(
             EC.presence_of_element_located((By.XPATH, '//app-bet-control[contains(@class, "bet-control") and contains(@class, "double-bet") and not(contains(@class, "locked"))]'))
         )
@@ -449,6 +473,9 @@ def activate_bot(attempts):
         print("✈️ --PLANE HAS TAKEN OFF--")
 
         seen_multipliers = [get_first_multiplier_data()]
+
+        trigger = 0
+        last_saved_time = datetime.now()
 
         while True:
             if check_cashout_success():
@@ -460,6 +487,7 @@ def activate_bot(attempts):
                 try:
                     second_multiplier = get_second_multiplier_data()
                     new_multipliers = [get_first_multiplier_data()]
+                    total_bets = get_total_bets()
                     new_values = [value for value in new_multipliers if value not in seen_multipliers]
 
                     if trigger == 0:
@@ -477,6 +505,9 @@ def activate_bot(attempts):
                             seen_multipliers = (seen_multipliers + new_values)[-1:]
                             count += 1
                             last_saved_time = datetime.now()  # Update the last saved time
+                            trigger = 0
+                            print(f"💔 Plane has flown away at {new_values[0]}")
+                            break
                     else:
                         if new_values:
                             print(f"✅ {count} = {new_values[0]}")
@@ -488,6 +519,15 @@ def activate_bot(attempts):
                             count += 1
                             last_saved_time = datetime.now()  # Update the last saved time
                             trigger = 0
+                            print(f"💔 Plane has flown away at {new_values[0]}")
+                            break
+                    
+                    # Check if 3 minutes have passed since the last save
+                    if datetime.now() - last_saved_time > timedelta(minutes=3):
+                        print("timeout!")
+                        send_email("timeout","its been 3 minutes without a new value")
+                        driver.quit()
+                        exit(0)
 
                 except StaleElementReferenceException:
                     print("StaleElementReferenceException encountered. Re-locating elements.")
