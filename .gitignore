@@ -23,5 +23,5 @@ path/to/directory/*
 
 # Ignore all files ending with .bak
 *.bak
-multipliers.xlsx
+
 multipliers.xlsx

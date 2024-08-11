@@ -51,18 +51,18 @@ def main():
     def login():
         print("🔃 logging in....")
 
-        username = '978934162'
-        password = 'Instacred'
+        username = '770125562'
+        password = 'thebag'
 
         try:
-            username_field = WebDriverWait(driver, 20).until(
-                EC.presence_of_element_located((By.ID, 'login-mobile'))
+            parent_element = WebDriverWait(driver, 30).until(
+                EC.presence_of_element_located((By.CLASS_NAME, 'v-text-field__slot'))
             )
-            password_field = WebDriverWait(driver, 20).until(
-                EC.presence_of_element_located((By.ID, 'login-password'))
-            )
+            username_field = parent_element.find_element(By.XPATH, '//input[@placeholder="Mobile Number" and @type="number"]')
+            password_field = parent_element.find_element(By.XPATH, '//input[@placeholder="Password" and @type="password"]')
+            
             login_button = WebDriverWait(driver, 20).until(
-                EC.presence_of_element_located((By.XPATH, '//button[contains(@class,"whitespace-nowrap") and contains(@class,"bg-identity") and contains(@class,"w-full")]'))
+                EC.presence_of_element_located((By.XPATH, '//button[@type="button" and contains(@class,"mx-1") and contains(@class,"rounded-lg") and contains(@class,"v-btn") and contains(@class,"v-btn--text") and contains(@class,"theme--light") and contains(@class,"v-size--default") and contains(@class,"white--text") and contains(@class,"primary")]'))
             )
 
             username_field.send_keys(username)
