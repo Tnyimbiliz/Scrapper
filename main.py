@@ -27,7 +27,8 @@ EMAIL_ADDRESS = "asventuresx@outlook.com"
 EMAIL_PASSWORD = "Instacred@2024"
 
 # Recipients
-RECIPIENTS = ["dwinansong52@gmail.com", "siamechaila@gmail.com", "jortiatisthomas@gmail.com"]
+#RECIPIENTS = ["dwinansong52@gmail.com", "siamechaila@gmail.com", "jortiatisthomas@gmail.com"]
+RECIPIENTS = ["jortiatisthomas@gmail.com"]
 
 # Path to your ChromeDriver
 chromedriver_path = 'C:/Users/LENOVO/Pictures/chromedriver-win64/chromedriver.exe'  # Replace with your actual path
@@ -36,6 +37,8 @@ print(f"Using ChromeDriver path: {chromedriver_path}")
 # Set up the driver
 service = Service(chromedriver_path)
 driver = webdriver.Chrome(service=service, options=chrome_options)
+
+driver.maximize_window()
 
 # Open the website
 url = "https://www.betway.co.zm/lobby/Casino/featured/Aviator/"
@@ -46,10 +49,26 @@ driver.get(url)
 # --------------------------- FUNCTIONS ---------------------------------
 
 def login():
-    print("🔃 logging in....")
+    print("🔃 Logging in....")
 
-    username = '770125562'
-    password = 'thebag'
+    username = '978934162'
+    password = 'Instacred'
+
+    username_field = driver.find_element(By.ID, 'login-mobile')
+    password_field = driver.find_element(By.ID, 'login-password')
+    login_button = driver.find_element(By.XPATH, '*//button[@aria-label="Login" and @type="submit"]')
+
+    username_field.send_keys(username)
+    password_field.send_keys(password)
+
+    login_button.click()
+    print("✅ Logged in successfully!")
+    driver.minimize_window()
+    
+
+    '''
+    # Fail safe login
+
 
     try:
         parent_element = WebDriverWait(driver, 30).until(
@@ -58,19 +77,27 @@ def login():
         username_field = parent_element.find_element(By.XPATH, '//input[@placeholder="Mobile Number" and @type="number"]')
         password_field = parent_element.find_element(By.XPATH, '//input[@placeholder="Password" and @type="password"]')
         
+        parent_element = WebDriverWait(driver, 30).until(
+            EC.presence_of_element_located((By.CLASS_NAME, 'v-btn__content'))
+        )
+        cancel_button = parent_element.find_element(By.XPATH, '//button[@type="button" and @class="v-icon notranslate v-icon--link theme--light"]')
+
+        cancel_button.click()
         login_button = WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.XPATH, '//button[contains(@class,"mx-1") and contains(@class,"rounded-lg") and contains(@class,"v-size--default")]'))
+                EC.presence_of_element_located((By.XPATH, '//button[contains(@class,"mx-1") and contains(@class,"rounded-lg") and contains(@class,"v-btn") and contains(@class,"v-btn--text") and contains(@class,"theme--dark") and contains(@class,"v-size--default") and contains(@class,"white") and contains(@class,"font-weight-black")]'))
         )
 
         username_field.send_keys(username)
         password_field.send_keys(password)
         login_button.click()
         print("✅ Logged in successfully!")
+        driver.minimize_window()
 
     except Exception as e:
-        print(f"unable to login{e}")
+        print(f"❌ Unable to login: {e}")
         time.sleep(30)
         driver.quit()
+    '''
 
 def click_bet_button():
     try:
@@ -238,19 +265,6 @@ def get_second_multiplier_data():
     multiplier = element.text
     return multiplier
 
-def save_to_text(data, filename='multipliers.txt'):
-    with open(filename, 'a') as file:
-        file.write(f"{data}\n")
-
-def save_to_excel(data, filename='multipliers.xlsx'):
-    df = pd.DataFrame(data, columns=['Value', 'Timestamp', 'Total Bets'])
-    try:
-        existing_df = pd.read_excel(filename)
-        df = pd.concat([existing_df, df], ignore_index=True)
-    except FileNotFoundError:
-        pass
-    df.to_excel(filename, index=False)
-
 # ------------------------- START --------------------------
 
 #login function
@@ -260,7 +274,6 @@ print("⏱️ Loading...")
 time.sleep(10)
 
 # ------------------------- TESTS ---------------------------
-
 successful_tests = 0
 # Check for iframes
 try:
@@ -301,8 +314,8 @@ else:
     exit()
 
 # ------------- ❌ Pressures -----------------------------
-#  1️⃣ after bet, the data isnt scrapped
-#  1️⃣ the bet value, is not reset after a win
+#  1️⃣ after bet, the data isnt scrapped 
+#  1️⃣ the bet value, is not reset after a win ✅
 
 # ------------------------- MAIN --------------------------
 
@@ -317,34 +330,36 @@ def main_game_loop():
 
     print("starting...")
 
+    # ------------------ USER DEFINED VARIABLES ---------------- 
 
-    # ------------------ USER DEFINED VARIABLES ----------------
-
-    cashout_value = 10
+    cashout_value = 2
     bet_value = 0.1
+    
+    if bet_value <= 0:
+        print("bet value is invalid")
+        #send_email("Error","Invalid bet value: cannot be less than 0!")
+        time.sleep(5)
+        driver.quit()
+        exit(0)
 
-    increment_factor = 2
+    increment_factor = 1
+
+    if increment_factor <= 0:
+        print("increment value is invalid")
+        #send_email("Error","Invalid increment value: cannot be less than 0!")
+        time.sleep(5)
+        driver.quit()
+        exit(0)
 
     last_bet_count = 2
-    maximum_multiplier_value = 5
+    maximum_multiplier_value = 3
 
     attempts = 3
 
     # -----------------------------------------------------------
 
     click_auto_button()
-    time.sleep(1)
     trigger_auto()
-
-    global last_bets
-    global count
-    
-
-    seen_multipliers = [get_first_multiplier_data()]
-
-    count = 1
-    last_saved_time = datetime.now()
-    trigger = 0
 
     while True:
 
@@ -352,19 +367,10 @@ def main_game_loop():
         last_bets = [convert_to_float(multiplier) for multiplier in initial_multipliers[:last_bet_count]]
         
         if len(last_bets) == last_bet_count and all(bet < maximum_multiplier_value for bet in last_bets):
-            total_bets = get_total_bets()
-            new_values = [get_first_multiplier_data()]
-            print(f"✅ {count} = {new_values[0]}")
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            data = [(value.rstrip('x'), timestamp, total_bets) for value in new_values]
-            save_to_excel(data)  # Save the new multipliers
-            save_to_text(data)
-            seen_multipliers = (seen_multipliers + new_values)[-1:]
-            count += 1
-            last_saved_time = datetime.now()
 
             print(f"🚨 Last {last_bet_count} bets were below {maximum_multiplier_value}, betting {bet_value} with cashout value of {cashout_value} and increment factor of {increment_factor}")
 
+            original_bet_value = bet_value
             if activate_bot(attempts):
                 print("✅ Bet successfully cashed out after 3 low bets")
 
@@ -373,54 +379,9 @@ def main_game_loop():
                 print("❌ didnt cash out!, stopping the program")
                 time.sleep(10)
                 driver.quit()
-                break
-        
-        else:
-            try:
-                total_bets = get_total_bets()
-                new_multipliers = [get_first_multiplier_data()]
-                second_multiplier = get_second_multiplier_data()
-                new_values = [value for value in new_multipliers if value not in seen_multipliers]
-
-                if trigger == 0:
-                    if second_multiplier == new_multipliers[0]:
-                        print("repeated value!!!!!!!!!!!!!")
-                        new_values = [new_multipliers[0]]
-                        trigger = 1 #trigger it not to look for a second value anymore
-
-                    if new_values:
-                        print(f"✅ {count} = {new_values[0]}")
-                        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        data = [(value.rstrip('x'), timestamp, total_bets) for value in new_values]
-                        save_to_excel(data)  # Save the new multipliers
-                        save_to_text(data)
-                        seen_multipliers = (seen_multipliers + new_values)[-1:]
-                        count += 1
-                        last_saved_time = datetime.now()  # Update the last saved time
-                else:
-                    if new_values:
-                        print(f"✅ {count} = {new_values[0]}")
-                        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        data = [(value.rstrip('x'), timestamp, total_bets) for value in new_values]
-                        save_to_excel(data)  # Save the new multipliers
-                        save_to_text(data)
-                        seen_multipliers = (seen_multipliers + new_values)[-1:]
-                        count += 1
-                        last_saved_time = datetime.now()  # Update the last saved time
-                        trigger = 0
-                    
-                # Check if 3 minutes have passed since the last save
-                if datetime.now() - last_saved_time > timedelta(minutes=3):
-                    print("timeout!")
-                    send_email("timeout","its been 3 minutes without a new value")
-                    last_saved_time = datetime.now()  # Reset the timer
-
-            except StaleElementReferenceException:
-                print("StaleElementReferenceException encountered. Re-locating elements.")
-            except Exception as e:
-                print(f"❌ An error occurred: {e}")
-                break
-        
+                exit(0)
+            
+            bet_value = original_bet_value
 
 def activate_bot(attempts):
     global bet_value
@@ -430,13 +391,6 @@ def activate_bot(attempts):
 
     print("bot activated!!!")
     #send_email("Bot actived!","The bot has been triggered and has now begun betting." )
-
-    #insert_auto_value(cashout_value)
-    #insert_amount(bet_value)
-
-    # random click
-    #body_element = driver.find_element(By.TAG_NAME, 'body')
-    #body_element.click()
 
     success_trigger = 0
 
@@ -451,14 +405,17 @@ def activate_bot(attempts):
             bet_value = bet_value * increment_factor
 
         print(f"bet value: {bet_value}")
-        print(f"cashout value: {cashout_value}")
-        print(f"increment factor: {increment_factor}")
 
-        insert_amount(bet_value)
-        insert_auto_value(cashout_value)
+        if insert_amount(bet_value):
+            continue
+        
+        if insert_auto_value(cashout_value):
+            continue
 
         time.sleep(2)
-        click_bet_button()
+        if click_bet_button():
+            continue
+
         print(f"🎰 Bet placed successfully! - attempt {attempt+1}")
 
         locked_indicator = WebDriverWait(driver, 180).until(
@@ -469,13 +426,10 @@ def activate_bot(attempts):
         takeoff_indicator = WebDriverWait(driver, 60).until(
             EC.presence_of_element_located((By.XPATH, '//app-bet-control[contains(@class, "bet-control") and contains(@class, "double-bet") and not(contains(@class, "locked"))]'))
         )
-        
         print("✈️ --PLANE HAS TAKEN OFF--")
 
         seen_multipliers = [get_first_multiplier_data()]
-
         trigger = 0
-        last_saved_time = datetime.now()
 
         while True:
             if check_cashout_success():
@@ -487,7 +441,6 @@ def activate_bot(attempts):
                 try:
                     second_multiplier = get_second_multiplier_data()
                     new_multipliers = [get_first_multiplier_data()]
-                    total_bets = get_total_bets()
                     new_values = [value for value in new_multipliers if value not in seen_multipliers]
 
                     if trigger == 0:
@@ -497,50 +450,28 @@ def activate_bot(attempts):
                             trigger = 1 #trigger it not to look for a second value anymore
 
                         if new_values:
-                            print(f"✅ {count} = {new_values[0]}")
-                            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                            data = [(value.rstrip('x'), timestamp, total_bets) for value in new_values]
-                            save_to_excel(data)  # Save the new multipliers
-                            save_to_text(data)
-                            seen_multipliers = (seen_multipliers + new_values)[-1:]
-                            count += 1
-                            last_saved_time = datetime.now()  # Update the last saved time
-                            trigger = 0
                             print(f"💔 Plane has flown away at {new_values[0]}")
+                            seen_multipliers = (seen_multipliers + new_values)[-1:]
                             break
                     else:
                         if new_values:
-                            print(f"✅ {count} = {new_values[0]}")
-                            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                            data = [(value.rstrip('x'), timestamp, total_bets) for value in new_values]
-                            save_to_excel(data)  # Save the new multipliers
-                            save_to_text(data)
-                            seen_multipliers = (seen_multipliers + new_values)[-1:]
-                            count += 1
-                            last_saved_time = datetime.now()  # Update the last saved time
-                            trigger = 0
                             print(f"💔 Plane has flown away at {new_values[0]}")
+                            seen_multipliers = (seen_multipliers + new_values)[-1:]
+                            trigger = 0
                             break
-                    
-                    # Check if 3 minutes have passed since the last save
-                    if datetime.now() - last_saved_time > timedelta(minutes=3):
-                        print("timeout!")
-                        send_email("timeout","its been 3 minutes without a new value")
-                        driver.quit()
-                        exit(0)
 
                 except StaleElementReferenceException:
                     print("StaleElementReferenceException encountered. Re-locating elements.")
                 except Exception as e:
                     print(f"❌ An error occurred: {e}")
                     break
-    
     return False
 
 try:
     main_game_loop()
 except Exception as e:
     print(f"An error occurred: {e}")
+    #send_email("Error", "An unexpected error occured : "+ str(e))
     driver.quit()
 
 # Close the driver

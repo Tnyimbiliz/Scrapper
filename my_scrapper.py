@@ -49,31 +49,21 @@ def main():
     # --------------------------- FUNCTIONS ---------------------------------
 
     def login():
-        print("🔃 logging in....")
+        print("🔃 Logging in....")
 
         username = '770125562'
         password = 'thebag'
 
-        try:
-            parent_element = WebDriverWait(driver, 30).until(
-                EC.presence_of_element_located((By.CLASS_NAME, 'v-text-field__slot'))
-            )
-            username_field = parent_element.find_element(By.XPATH, '//input[@placeholder="Mobile Number" and @type="number"]')
-            password_field = parent_element.find_element(By.XPATH, '//input[@placeholder="Password" and @type="password"]')
-            
-            login_button = WebDriverWait(driver, 20).until(
-                EC.presence_of_element_located((By.XPATH, '//button[@type="button" and contains(@class,"mx-1") and contains(@class,"rounded-lg") and contains(@class,"v-btn") and contains(@class,"v-btn--text") and contains(@class,"theme--light") and contains(@class,"v-size--default") and contains(@class,"white--text") and contains(@class,"primary")]'))
-            )
+        username_field = driver.find_element(By.ID, 'login-mobile')
+        password_field = driver.find_element(By.ID, 'login-password')
+        login_button = driver.find_element(By.XPATH, '*//button[@aria-label="Login" and @type="submit"]')
 
-            username_field.send_keys(username)
-            password_field.send_keys(password)
-            login_button.click()
-            print("✅ Logged in successfully!")
+        username_field.send_keys(username)
+        password_field.send_keys(password)
 
-        except Exception as e:
-            print(f"unable to login{e}")
-            time.sleep(30)
-            driver.quit()
+        login_button.click()
+        print("✅ Logged in successfully!")
+        driver.minimize_window()
 
     def send_email(subject, body):
         msg = MIMEMultipart()
