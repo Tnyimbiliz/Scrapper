@@ -1,5 +1,6 @@
 import smtplib
 import time
+import os
 import pandas as pd
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -19,7 +20,7 @@ def main():
     # Set up Chrome options
     chrome_options = Options()
     chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
+    #chrome_options.add_argument("--disable-dev-shm-usage")
 
     # Path to your ChromeDriver
     chromedriver_path = 'chromedriver-win64/chromedriver.exe'  # Replace with your actual path
@@ -51,8 +52,8 @@ def main():
     def login():
         print("🔃 Logging in....")
 
-        username = '770125562'
-        password = 'thebag'
+        username = '978934162'
+        password = 'Instacred'
 
         username_field = driver.find_element(By.ID, 'login-mobile')
         password_field = driver.find_element(By.ID, 'login-password')
@@ -106,19 +107,28 @@ def main():
         element = driver.find_element(By.CSS_SELECTOR, 'div.payouts-block > app-bubble-multiplier.payout.ng-star-inserted:nth-child(2)')
         multiplier = element.text
         return multiplier
-    
-    def save_to_text(data, filename='multipliers.txt'):
-        with open(filename, 'a') as file:
+
+    def save_data(data):
+        # Create the "multipliers" directory if it doesn't exist
+        folder_path = os.path.join(os.getcwd(), 'multipliers')
+        if not os.path.exists(folder_path):
+            os.makedirs(folder_path)
+
+        # Save to betway_multipliers.txt in the "multipliers" folder
+        text_file_path = os.path.join(folder_path, 'betway_multipliers.txt')
+        with open(text_file_path, 'a') as file:
             file.write(f"{data}\n")
 
-    def save_to_excel(data, filename='multipliers.xlsx'):
+        # Convert data to DataFrame and save to betway_multipliers.xlsx in the "multipliers" folder
         df = pd.DataFrame(data, columns=['Value', 'Timestamp', 'Total Bets'])
+        excel_file_path = os.path.join(folder_path, 'betway_multipliers.xlsx')
         try:
-            existing_df = pd.read_excel(filename)
+            existing_df = pd.read_excel(excel_file_path)
             df = pd.concat([existing_df, df], ignore_index=True)
         except FileNotFoundError:
             pass
-        df.to_excel(filename, index=False)
+        df.to_excel(excel_file_path, index=False)
+
 
     # ------------------------- MAIN --------------------------
 
@@ -148,7 +158,7 @@ def main():
     )
 
     print("starting...")
-
+    
     seen_multipliers = [get_first_multiplier_data()]
 
     count = 1
@@ -173,8 +183,7 @@ def main():
                     print(f"✅ {count} = {new_values[0]}")
                     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     data = [(value.rstrip('x'), timestamp, total_bets) for value in new_values]
-                    save_to_excel(data)  # Save the new multipliers
-                    save_to_text(data)
+                    save_data(data)
                     seen_multipliers = (seen_multipliers + new_values)[-1:]
                     count += 1
                     last_saved_time = datetime.now()  # Update the last saved time
@@ -183,8 +192,7 @@ def main():
                     print(f"✅ {count} = {new_values[0]}")
                     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     data = [(value.rstrip('x'), timestamp, total_bets) for value in new_values]
-                    save_to_excel(data)  # Save the new multipliers
-                    save_to_text(data)
+                    save_data(data)
                     seen_multipliers = (seen_multipliers + new_values)[-1:]
                     count += 1
                     last_saved_time = datetime.now()  # Update the last saved time
