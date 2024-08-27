@@ -17,53 +17,6 @@ from selenium.common.exceptions import StaleElementReferenceException
 from datetime import datetime, timedelta
 
 
-# -------------------------- SETUP -------------------------------
-# Set up Firefox options
-firefox_options = FirefoxOptions()
-firefox_options.add_argument("--no-sandbox")
-#firefox_options.add_argument("--headless")  # Run without a GUI
-firefox_options.add_argument("--disable-gpu")  # Disable GPU hardware acceleration
-firefox_options.add_argument("--disable-dev-shm-usage")  # Overcome limited resource problems
-firefox_options.add_argument("--single-process")  # Run Firefox in a single process mode
-firefox_options.add_argument("--disable-extensions")  # Disable all extensions
-firefox_options.add_argument("--disable-logging")  # Disable logging
-firefox_options.add_argument("--disable-infobars")  # Disable the "Chrome is being controlled" info bar
-firefox_options.add_argument("--disable-browser-side-navigation")  # Disable browser side navigation
-firefox_options.add_argument("--disable-popup-blocking")  # Disable popup blocking
-firefox_options.add_argument("--disable-notifications")  # Disable notifications
-firefox_options.add_argument("--mute-audio")  # Mute audio
-firefox_options.add_argument("--no-zygote")  # Disable zygote process for less overhead
-firefox_options.add_argument("--disable-blink-features=AutomationControlled")  # Avoid being detected as a bot
-firefox_options.add_argument("--disable-background-timer-throttling")  # Disable throttling of background timers
-firefox_options.add_argument("--disable-backgrounding-occluded-windows")  # Reduce resource usage for occluded windows
-firefox_options.add_argument("--disable-renderer-backgrounding")  # Disable renderer backgrounding to reduce CPU load
-firefox_options.add_argument("--disable-features=VizDisplayCompositor")  # Reduces CPU usage by disabling VizDisplayCompositor
-firefox_options.add_argument("--disable-site-isolation-trials")  # Disable site isolation to reduce CPU load
-
-
-# Email settings
-SMTP_SERVER = "smtp.office365.com"
-SMTP_PORT = 587
-EMAIL_ADDRESS = "asventuresx@outlook.com"
-EMAIL_PASSWORD = "Instacred@2024"
-RECIPIENTS = ["jortiatisthomas@gmail.com"]
-
-# Path to your GeckoDriver
-geckodriver_path = 'geckodriver-v0.35.0-win64/geckodriver.exe'  # Replace with your actual path if needed
-print(f"Using GeckoDriver path: {geckodriver_path}")
-
-# Set up the driver
-service = FirefoxService(executable_path=geckodriver_path)
-driver = webdriver.Firefox(service=service, options=firefox_options)
-
-#driver.minimize_window()
-
-# Open the website
-url = "https://www.betway.co.zm/lobby/Casino/featured/Aviator/"
-print(f"✈️ Navigating to {url}")
-driver.get(url)
-
-
 # -------------------------- ASYNC FUNCTIONS ----------------------------
 
 async def perform_tests():
@@ -156,6 +109,14 @@ async def mute():
     driver.execute_script("arguments[0].click();", aviator)
 
 async def send_email(subject, body):
+
+    # Email settings
+    SMTP_SERVER = "smtp.office365.com"
+    SMTP_PORT = 587
+    EMAIL_ADDRESS = "asventuresx@outlook.com"
+    EMAIL_PASSWORD = "Instacred@2024"
+    RECIPIENTS = ["jortiatisthomas@gmail.com"]
+
     msg = MIMEMultipart()
     msg["From"] = EMAIL_ADDRESS
     msg["To"] = ", ".join(RECIPIENTS)
@@ -559,35 +520,81 @@ def run_scrapper_loop():
 
 # -------------------------- ENTRY POINT --------------------------
 
+def main():
+    while True:
+        try:
+
+            # -------------------------- SETUP -------------------------------
+            # Set up Firefox options
+            firefox_options = FirefoxOptions()
+            firefox_options.add_argument("--no-sandbox")
+            #firefox_options.add_argument("--headless")  # Run without a GUI
+            firefox_options.add_argument("--disable-gpu")  # Disable GPU hardware acceleration
+            firefox_options.add_argument("--disable-dev-shm-usage")  # Overcome limited resource problems
+            firefox_options.add_argument("--single-process")  # Run Firefox in a single process mode
+            firefox_options.add_argument("--disable-extensions")  # Disable all extensions
+            firefox_options.add_argument("--disable-logging")  # Disable logging
+            firefox_options.add_argument("--disable-infobars")  # Disable the "Chrome is being controlled" info bar
+            firefox_options.add_argument("--disable-browser-side-navigation")  # Disable browser side navigation
+            firefox_options.add_argument("--disable-popup-blocking")  # Disable popup blocking
+            firefox_options.add_argument("--disable-notifications")  # Disable notifications
+            firefox_options.add_argument("--mute-audio")  # Mute audio
+            firefox_options.add_argument("--no-zygote")  # Disable zygote process for less overhead
+            firefox_options.add_argument("--disable-blink-features=AutomationControlled")  # Avoid being detected as a bot
+            firefox_options.add_argument("--disable-background-timer-throttling")  # Disable throttling of background timers
+            firefox_options.add_argument("--disable-backgrounding-occluded-windows")  # Reduce resource usage for occluded windows
+            firefox_options.add_argument("--disable-renderer-backgrounding")  # Disable renderer backgrounding to reduce CPU load
+            firefox_options.add_argument("--disable-features=VizDisplayCompositor")  # Reduces CPU usage by disabling VizDisplayCompositor
+            firefox_options.add_argument("--disable-site-isolation-trials")  # Disable site isolation to reduce CPU load
+
+
+            # Path to your GeckoDriver
+            geckodriver_path = 'geckodriver-v0.35.0-win64/geckodriver.exe'  # Replace with your actual path if needed
+            print(f"Using GeckoDriver path: {geckodriver_path}")
+
+            # Set up the driver
+            service = FirefoxService(executable_path=geckodriver_path)
+            global driver
+            driver = webdriver.Firefox(service=service, options=firefox_options)
+
+
+            # Open the website
+            url = "https://www.betway.co.zm/lobby/Casino/featured/Aviator/"
+            print(f"✈️ Navigating to {url}")
+            driver.get(url)
+            # Run login first, then start the bot
+            asyncio.run(login())
+            print("⏱️ Loading...")
+            asyncio.run(asyncio.sleep(10))
+
+            asyncio.run(perform_tests())
+            asyncio.run(asyncio.sleep(3))
+
+            global SIGNAL
+            SIGNAL = 0
+
+            bot_thread = threading.Thread(target=run_bot_loop)
+            scraper_thread = threading.Thread(target=run_scrapper_loop)
+
+
+            bot_thread.start()
+            scraper_thread.start()
+
+            bot_thread.join()
+            scraper_thread.join()
+
+        except Exception as e:
+                print(f"An error occurred: {e}")
+                send_email("ERROR","AN ERROR OCCURED :"+ str(e))
+                try:
+                    driver.quit()
+                except:
+                    pass
+                print("Restarting the program in 10 seconds...")
+                time.sleep(10)
+
 if __name__ == "__main__":
-    try:
-        # Run login first, then start the bot
-        asyncio.run(login())
-        print("⏱️ Loading...")
-        asyncio.run(asyncio.sleep(10))
-
-        asyncio.run(perform_tests())
-        asyncio.run(asyncio.sleep(3))
-        #asyncio.run(mute())
-
-        global SIGNAL
-        SIGNAL = 0
-
-        #bot_thread = threading.Thread(target=run_bot_loop)
-        scraper_thread = threading.Thread(target=run_scrapper_loop)
-
-
-        #bot_thread.start()
-        scraper_thread.start()
-
-        #bot_thread.join()
-        scraper_thread.join()
-
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        driver.quit()
-
-
+    main()
 
 # BETLION == GSB
 

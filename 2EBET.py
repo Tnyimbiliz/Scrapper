@@ -581,7 +581,7 @@ def main():
 
         except Exception as e:
             print(f"An error occurred: {e}")
-            send_email("ERROR","AN ERROR OCCURED :"+e)
+            send_email("ERROR","AN ERROR OCCURED :"+ str(e))
             try:
                 driver.quit()
             except:

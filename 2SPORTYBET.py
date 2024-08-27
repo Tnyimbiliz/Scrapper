@@ -17,50 +17,6 @@ from selenium.common.exceptions import StaleElementReferenceException
 from datetime import datetime, timedelta
 
 
-# -------------------------- SETUP -------------------------------
-# Set up Firefox options
-firefox_options = FirefoxOptions()
-firefox_options.add_argument("--no-sandbox")
-#firefox_options.add_argument("--headless")  # Run without a GUI
-firefox_options.add_argument("--disable-gpu")  # Disable GPU hardware acceleration
-firefox_options.add_argument("--disable-dev-shm-usage")  # Overcome limited resource problems
-firefox_options.add_argument("--single-process")  # Run Firefox in a single process mode
-firefox_options.add_argument("--disable-extensions")  # Disable all extensions
-firefox_options.add_argument("--disable-logging")  # Disable logging
-firefox_options.add_argument("--disable-infobars")  # Disable the "Chrome is being controlled" info bar
-firefox_options.add_argument("--disable-browser-side-navigation")  # Disable browser side navigation
-firefox_options.add_argument("--disable-popup-blocking")  # Disable popup blocking
-firefox_options.add_argument("--disable-notifications")  # Disable notifications
-firefox_options.add_argument("--mute-audio")  # Mute audio
-firefox_options.add_argument("--no-zygote")  # Disable zygote process for less overhead
-firefox_options.add_argument("--disable-blink-features=AutomationControlled")  # Avoid being detected as a bot
-firefox_options.add_argument("--disable-background-timer-throttling")  # Disable throttling of background timers
-firefox_options.add_argument("--disable-backgrounding-occluded-windows")  # Reduce resource usage for occluded windows
-firefox_options.add_argument("--disable-renderer-backgrounding")  # Disable renderer backgrounding to reduce CPU load
-firefox_options.add_argument("--disable-features=VizDisplayCompositor")  # Reduces CPU usage by disabling VizDisplayCompositor
-firefox_options.add_argument("--disable-site-isolation-trials")  # Disable site isolation to reduce CPU load
-
-# Email settings
-SMTP_SERVER = "smtp.office365.com"
-SMTP_PORT = 587
-EMAIL_ADDRESS = "asventuresx@outlook.com"
-EMAIL_PASSWORD = "Instacred@2024"
-RECIPIENTS = ["jortiatisthomas@gmail.com"]
-
-# Path to your GeckoDriver
-geckodriver_path = 'geckodriver-v0.35.0-win64/geckodriver.exe'  # Replace with your actual path if needed
-print(f"Using GeckoDriver path: {geckodriver_path}")
-
-# Set up the driver
-service = FirefoxService(executable_path=geckodriver_path)
-driver = webdriver.Firefox(service=service, options=firefox_options)
-
-#driver.minimize_window()
-
-# Open the website
-url = "https://mobile.betlion.co.zm/login" 
-print(f"✈️ Navigating to {url}")
-driver.get(url)
 
 # -------------------------- ASYNC FUNCTIONS ----------------------------
 
@@ -68,10 +24,12 @@ async def perform_tests():
     successful_tests = 0
     # Check for iframes
     try:
-        iframe = WebDriverWait(driver, 30).until(
-            EC.presence_of_element_located((By.TAG_NAME, 'iframe'))
-        )
-        driver.switch_to.frame(iframe)
+        outer_iframe = driver.find_element(By.TAG_NAME, 'iframe')
+        driver.switch_to.frame(outer_iframe)
+
+        inner_iframe = driver.find_element(By.TAG_NAME, 'iframe')  # Locate nested iframe
+        driver.switch_to.frame(inner_iframe)
+
         print("🛞 Switched to iframe!")
         successful_tests+=1
     except Exception as e:
@@ -79,7 +37,7 @@ async def perform_tests():
 
     try:
         bet_button = WebDriverWait(driver, 30).until(
-                EC.presence_of_element_located((By.XPATH, '//button[contains(@class, "btn-success") and contains(@class, "bet") and contains(@class, "ng-star-inserted")]'))
+                EC.presence_of_element_located((By.XPATH, '//button[contains(@class, "btn") and contains(@class, "btn-success") and contains(@class, "bet")  and contains(@class, "ng-star-inserted")]'))
             )
         print("✅ bet button found")
         successful_tests+=1
@@ -106,12 +64,14 @@ async def perform_tests():
 
 async def login():
     print("🔃 Logging in....")
-    username = '978934162'
-    password = '9876'
 
-    username_field = driver.find_element(By.ID, 'userMobile')
-    password_field = driver.find_element(By.ID, 'userPass')
-    login_button = driver.find_element(By.XPATH, '*//button[@class ="btn SB-btnSecondary active SB-btnLarge"]')
+    username = '978934162'
+    password = 'Instacred@1'
+
+    username_field = driver.find_element(By.XPATH, '//input[@type="tel"]')
+    password_field = driver.find_element(By.XPATH, '//input[@type="password"]')
+    login_button = driver.find_element(By.XPATH, '//button[@data-op="login-btn"]')
+    #login_button = driver.find_element(By.XPATH, '*//button[@class ="btn SB-btnSecondary active SB-btnLarge"]')
 
     username_field.send_keys(username)
     password_field.send_keys(password)
@@ -121,18 +81,14 @@ async def login():
     #driver.minimize_window()
     await asyncio.sleep(1)  # Simulate async work
 
-async def switch_to_iframe():
-    try:
-        iframe = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.TAG_NAME, 'iframe'))
-        )
-        driver.switch_to.frame(iframe)
-        print("🛞 Switched to iframe!")
-
-    except Exception as e:
-        print("❌No iframe found.")
-
 async def send_email(subject, body):
+    # Email settings
+    SMTP_SERVER = "smtp.office365.com"
+    SMTP_PORT = 587
+    EMAIL_ADDRESS = "asventuresx@outlook.com"
+    EMAIL_PASSWORD = "Instacred@2024"
+    RECIPIENTS = ["jortiatisthomas@gmail.com"]
+
     msg = MIMEMultipart()
     msg["From"] = EMAIL_ADDRESS
     msg["To"] = ", ".join(RECIPIENTS)
@@ -258,6 +214,15 @@ def insert_amount(amount):
     except Exception as e:
         print(f"❌ An error occurred: {e}")
 
+def check_cashout_success():
+    try:
+        cashout_message = WebDriverWait(driver, 1).until(
+            EC.presence_of_element_located((By.XPATH, '//div[contains(@class, "label") and contains(text(), "You have cashed out!")]'))
+        )
+        return True
+    except Exception as e:
+        return False
+
 def convert_to_float(value):
     try:
         return float(value.replace('x',''))
@@ -305,7 +270,7 @@ async def check_cashout_success():
         return True
     except Exception:
         return False
-
+    
 async def save_data(data):
     # Create the "multipliers" directory if it doesn't exist
     folder_path = os.path.join(os.getcwd(), 'multipliers')
@@ -313,13 +278,13 @@ async def save_data(data):
         os.makedirs(folder_path)
 
     # Save to betway_multipliers.txt in the "multipliers" folder
-    text_file_path = os.path.join(folder_path, 'betlion_multipliers.txt')
+    text_file_path = os.path.join(folder_path, 'sportybet_multipliers.txt')
     with open(text_file_path, 'a') as file:
         file.write(f"{data}\n")
 
     # Convert data to DataFrame and save to betway_multipliers.xlsx in the "multipliers" folder
     df = pd.DataFrame(data, columns=['Value', 'Timestamp', 'Total Bets'])
-    excel_file_path = os.path.join(folder_path, 'betlion_multipliers.xlsx')
+    excel_file_path = os.path.join(folder_path, 'sportybet_multipliers.xlsx')
     try:
         existing_df = pd.read_excel(excel_file_path)
         df = pd.concat([existing_df, df], ignore_index=True)
@@ -540,32 +505,76 @@ def run_scrapper_loop():
 
 # -------------------------- ENTRY POINT --------------------------
 
+def main():
+    while True:
+        try:
+            # -------------------------- SETUP -------------------------------
+            # Set up Firefox options
+            firefox_options = FirefoxOptions()
+            firefox_options.add_argument("--no-sandbox")
+            #firefox_options.add_argument("--headless")  # Run without a GUI
+            firefox_options.add_argument("--disable-gpu")  # Disable GPU hardware acceleration
+            firefox_options.add_argument("--disable-dev-shm-usage")  # Overcome limited resource problems
+            firefox_options.add_argument("--single-process")  # Run Firefox in a single process mode
+            firefox_options.add_argument("--disable-extensions")  # Disable all extensions
+            firefox_options.add_argument("--disable-logging")  # Disable logging
+            firefox_options.add_argument("--disable-infobars")  # Disable the "Chrome is being controlled" info bar
+            firefox_options.add_argument("--disable-browser-side-navigation")  # Disable browser side navigation
+            firefox_options.add_argument("--disable-popup-blocking")  # Disable popup blocking
+            firefox_options.add_argument("--disable-notifications")  # Disable notifications
+            firefox_options.add_argument("--mute-audio")  # Mute audio
+            firefox_options.add_argument("--no-zygote")  # Disable zygote process for less overhead
+            firefox_options.add_argument("--disable-blink-features=AutomationControlled")  # Avoid being detected as a bot
+            firefox_options.add_argument("--disable-background-timer-throttling")  # Disable throttling of background timers
+            firefox_options.add_argument("--disable-backgrounding-occluded-windows")  # Reduce resource usage for occluded windows
+            firefox_options.add_argument("--disable-renderer-backgrounding")  # Disable renderer backgrounding to reduce CPU load
+            firefox_options.add_argument("--disable-features=VizDisplayCompositor")  # Reduces CPU usage by disabling VizDisplayCompositor
+            firefox_options.add_argument("--disable-site-isolation-trials")  # Disable site isolation to reduce CPU load
+
+
+            # Path to your GeckoDriver
+            geckodriver_path = 'geckodriver-v0.35.0-win64/geckodriver.exe'  # Replace with your actual path if needed
+            print(f"Using GeckoDriver path: {geckodriver_path}")
+
+            # Set up the driver
+            service = FirefoxService(executable_path=geckodriver_path)
+            global driver
+            driver = webdriver.Firefox(service=service, options=firefox_options)
+
+
+            # Open the website
+            url = "https://www.sportybet.com/zm/m/games/sportygames?game=turbo-games/aviator#login" 
+            print(f"✈️ Navigating to {url}")
+            driver.get(url)
+            # Run login first, then start the bot
+            asyncio.run(login())
+            print("⏱️ Loading...")
+            asyncio.run(asyncio.sleep(5))
+
+            asyncio.run(perform_tests())
+
+            global SIGNAL
+            SIGNAL = 0
+
+            bot_thread = threading.Thread(target=run_bot_loop)
+            scraper_thread = threading.Thread(target=run_scrapper_loop)
+
+            bot_thread.start()
+            scraper_thread.start()
+
+            bot_thread.join()
+            scraper_thread.join()
+
+        except Exception as e:
+                print(f"An error occurred: {e}")
+                send_email("ERROR","AN ERROR OCCURED :"+ str(e))
+                try:
+                    driver.quit()
+                except:
+                    pass
+                print("Restarting the program in 10 seconds...")
+                time.sleep(10)
+
+
 if __name__ == "__main__":
-    try:
-        # Run login first, then start the bot
-        asyncio.run(login())
-        print("⏱️ Loading...")
-        asyncio.run(asyncio.sleep(5))
-
-        url = "https://mobile.betlion.co.zm/play-aviator"
-        driver.get(url)
-
-        asyncio.run(asyncio.sleep(5))
-
-        global SIGNAL
-        SIGNAL = 0
-
-        asyncio.run(perform_tests())
-
-        bot_thread = threading.Thread(target=run_bot_loop)
-        scraper_thread = threading.Thread(target=run_scrapper_loop)
-
-        bot_thread.start()
-        scraper_thread.start()
-
-        bot_thread.join()
-        scraper_thread.join()
-
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        driver.quit()
+    main()
